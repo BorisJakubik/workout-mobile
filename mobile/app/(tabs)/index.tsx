@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { Screen } from '@/src/components/screen';
 import { useAuth } from '@/src/providers/auth-provider';
 
 export default function HomeScreen() {
   const { session } = useAuth();
+  const router = useRouter();
 
   return (
     <Screen>
@@ -15,7 +17,9 @@ export default function HomeScreen() {
         <Text style={styles.cardTitle}>Signed in as</Text>
         <Text style={styles.email}>{session?.user.email ?? 'your account'}</Text>
       </View>
-      <Text style={styles.note}>Workout data will be added in Phase 2.</Text>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/workouts')} style={styles.button}>
+        <Text style={styles.buttonText}>View workouts</Text>
+      </Pressable>
     </Screen>
   );
 }
@@ -37,5 +41,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#182019', borderColor: '#2B372C', borderRadius: 16, borderWidth: 1, marginTop: 32, padding: 20 },
   cardTitle: { color: '#A0AAA0', fontSize: 14 },
   email: { color: '#F7F8F5', fontSize: 16, fontWeight: '600', marginTop: 6 },
-  note: { color: '#A0AAA0', fontSize: 14, marginTop: 24 },
+  button: { alignItems: 'center', backgroundColor: '#B7F34A', borderRadius: 12, marginTop: 24, padding: 15 },
+  buttonText: { color: '#101510', fontSize: 16, fontWeight: '800' },
 });

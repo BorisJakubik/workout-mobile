@@ -35,6 +35,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={Boolean(session)}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="workout/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="sign-in" />
