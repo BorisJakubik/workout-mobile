@@ -1,14 +1,14 @@
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import "react-native-reanimated";
 
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { AuthProvider, useAuth } from '@/src/providers/auth-provider';
-import { PreferencesProvider, usePreferences } from '@/src/providers/preferences-provider';
+import { AuthProvider, useAuth } from "@/src/providers/auth-provider";
+import { PreferencesProvider, usePreferences } from "@/src/providers/preferences-provider";
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: "(tabs)",
 };
 
 export default function RootLayout() {
@@ -29,7 +29,7 @@ function RootNavigator() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color="#B7F34A" />
-        <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+        <StatusBar style={theme === "dark" ? "light" : "dark"} />
       </View>
     );
   }
@@ -39,22 +39,23 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={Boolean(session)}>
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="workout/new" />
           <Stack.Screen name="workout/[id]" />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="sign-in" />
         </Stack.Protected>
       </Stack>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={theme === "dark" ? "light" : "dark"} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
   loading: {
-    alignItems: 'center',
-    backgroundColor: '#101510',
+    alignItems: "center",
+    backgroundColor: "#101510",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
 });

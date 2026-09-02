@@ -1,8 +1,8 @@
-import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { PropsWithChildren } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 
-import { supabase } from '@/src/lib/supabase';
+import { supabase } from "@/src/lib/supabase";
 
 type AuthContextValue = {
   isLoading: boolean;
@@ -54,6 +54,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
 export function useAuth() {
   const value = useContext(AuthContext);
-  if (!value) throw new Error('useAuth must be used within AuthProvider.');
+  if (!value) throw new Error("useAuth must be used within AuthProvider.");
   return value;
 }
