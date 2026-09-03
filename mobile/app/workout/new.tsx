@@ -1,17 +1,33 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
 import { getCatalog, type CatalogCategory, type CatalogExercise } from "@/src/services/catalog";
-import { createWorkout } from "@/src/services/workouts";
-import type { WorkoutExercise } from "@/src/types";
+import { createWorkout, getWorkouts } from "@/src/services/workouts";
+import type { Workout, WorkoutExercise } from "@/src/types";
 import { translate, translateExerciseName, translateWorkoutName } from "@/src/i18n";
 import { usePreferences } from "@/src/providers/preferences-provider";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const templateExercises = (categoryId: string, catalog: CatalogExercise[], workouts: Workout[]): WorkoutExercise[] => {
+  const previous = workouts
+    .filter((workout) => workout.completed && workout.categoryId === categoryId)
+    .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime())[0];
+  if (previous) {
+    return previous.exercises.map((exercise, index) => ({
+      ...exercise,
+      id: `${exercise.id}-${index}-${Date.now()}`,
+      sets: exercise.sets.map((set) => ({ ...set })),
+    }));
+  }
+  const first = catalog.find((exercise) => exercise.categoryId === categoryId);
+  return first ? [{ exerciseId: first.id, id: `${first.id}-${Date.now()}`, name: first.name, sets: [{ reps: 10, weight: 0 }] }] : [];
+};
+
 export default function NewWorkoutScreen() {
   const router = useRouter();
+  const { categoryId: initialCategoryId } = useLocalSearchParams<{ categoryId?: string }>();
   const { language } = usePreferences();
   const [catalog, setCatalog] = useState<CatalogExercise[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
@@ -23,23 +39,34 @@ export default function NewWorkoutScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    getCatalog()
-      .then(({ categories: loadedCategories, exercises: loadedExercises }) => {
+    Promise.all([getCatalog(), getWorkouts()])
+      .then(([{ categories: loadedCategories, exercises: loadedExercises }, workouts]) => {
         setCategories(loadedCategories);
         setCatalog(loadedExercises);
+        const category = loadedCategories.find((item) => item.id === initialCategoryId);
+        if (category) {
+          setCategoryId(category.id);
+          setName(category.name);
+          setExercises(templateExercises(category.id, loadedExercises, workouts));
+        }
       })
       .catch((error) => Alert.alert("Could not load exercise library", error instanceof Error ? error.message : "Please try again."))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [initialCategoryId]);
 
   const addExercise = (exercise: CatalogExercise) => {
     if (exercises.some((item) => item.exerciseId === exercise.id)) return;
     setExercises((current) => [...current, { exerciseId: exercise.id, id: exercise.id, name: exercise.name, sets: [{ reps: 0, weight: 0 }] }]);
   };
 
-  const selectCategory = (category: CatalogCategory) => {
+  const selectCategory = async (category: CatalogCategory) => {
     setCategoryId(category.id);
-    if (name === "Workout") setName(category.name);
+    setName(category.name);
+    try {
+      setExercises(templateExercises(category.id, catalog, await getWorkouts()));
+    } catch (error) {
+      Alert.alert("Could not load workout template", error instanceof Error ? error.message : "Please try again.");
+    }
   };
 
   const updateSet = (exerciseIndex: number, setIndex: number, field: "reps" | "weight", value: string) => {
@@ -114,7 +141,7 @@ export default function NewWorkoutScreen() {
           <Pressable
             accessibilityRole="button"
             key={category.id}
-            onPress={() => selectCategory(category)}
+            onPress={() => void selectCategory(category)}
             style={[styles.categoryButton, categoryId === category.id && styles.categoryButtonSelected]}
           >
             <Text style={[styles.categoryButtonText, categoryId === category.id && styles.categoryButtonTextSelected]}>
