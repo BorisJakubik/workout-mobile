@@ -17,9 +17,9 @@ export default function WorkoutsScreen() {
   const [visibleWorkoutsCount, setVisibleWorkoutsCount] = useState(5);
 
   const loadWorkouts = useCallback(async () => {
-    setIsLoading(true);
     try {
-      setWorkouts(await getWorkouts());
+      const loadedWorkouts = await getWorkouts();
+      setWorkouts(loadedWorkouts);
     } catch (error) {
       Alert.alert("Could not load workouts", error instanceof Error ? error.message : "Please try again.");
     } finally {
@@ -28,6 +28,8 @@ export default function WorkoutsScreen() {
   }, []);
 
   useEffect(() => {
+    // State updates happen after the workout request resolves, not during this effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadWorkouts();
   }, [loadWorkouts]);
 
@@ -43,7 +45,7 @@ export default function WorkoutsScreen() {
         <Text style={styles.newButtonText}>+ {translate(language, "newWorkout")}</Text>
       </Pressable>
       {!isLoading && <WorkoutCalendar onSelectWorkout={(workout) => router.push(`/workout/${workout.id}`)} workouts={workouts} />}
-      <Pressable accessibilityRole="button" onPress={() => void loadWorkouts()} style={styles.refreshButton}>
+      <Pressable accessibilityRole="button" onPress={() => { setIsLoading(true); void loadWorkouts(); }} style={styles.refreshButton}>
         <Text style={styles.refreshText}>{translate(language, "refresh")}</Text>
       </Pressable>
       {isLoading ? (
