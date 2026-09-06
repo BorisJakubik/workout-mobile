@@ -28,13 +28,17 @@ const templateExercises = (categoryId: string, catalog: CatalogExercise[], worko
 export default function NewWorkoutScreen() {
   const router = useRouter();
   const { categoryId: initialCategoryId } = useLocalSearchParams<{ categoryId?: string }>();
-  const { language } = usePreferences();
+  const { language, weightUnit } = usePreferences();
   const [catalog, setCatalog] = useState<CatalogExercise[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   const [name, setName] = useState("Workout");
   const [date, setDate] = useState(today());
+  const [duration, setDuration] = useState("60");
+  const [bodyWeight, setBodyWeight] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
+  const [rating, setRating] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -85,6 +89,7 @@ export default function NewWorkoutScreen() {
   };
 
   const save = async () => {
+    if (isSaving) return;
     if (!name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       Alert.alert("Check workout details", "Enter a workout name and a date in YYYY-MM-DD format.");
       return;
@@ -93,9 +98,28 @@ export default function NewWorkoutScreen() {
       Alert.alert("Add an exercise", "Choose at least one exercise from your library.");
       return;
     }
+    const minutes = Number(duration.trim().replace(",", "."));
+    const weight = bodyWeight.trim() === "" ? null : Number(bodyWeight.trim().replace(",", "."));
+    const fat = bodyFat.trim() === "" ? null : Number(bodyFat.trim().replace(",", "."));
+    if (!Number.isInteger(minutes) || minutes < 1 ||
+        (weight !== null && (!Number.isFinite(weight) || weight < 0)) ||
+        (fat !== null && (!Number.isFinite(fat) || fat < 0 || fat > 100))) {
+      Alert.alert(
+        language === "sk" ? "Skontrolujte údaje tréningu" : "Check workout details",
+        language === "sk"
+          ? "Trvanie zadajte v celých minútach (aspoň 1), hmotnosť ako nezáporné číslo a telesný tuk od 0 do 100 %. Hmotnosť a tuk môžete nechať prázdne."
+          : "Enter a duration in whole minutes (at least 1), a non-negative weight and body fat between 0 and 100%. Weight and body fat can be left blank.",
+      );
+      return;
+    }
     setIsSaving(true);
     try {
-      const workout = await createWorkout({ categoryId, completed: true, date: `${date}T12:00:00`, duration: 0, exercises, name: name.trim() });
+      const workout = await createWorkout({
+        categoryId, completed: true, date: `${date}T12:00:00`, duration: minutes, exercises, name: name.trim(),
+        bodyWeight: weight === null ? null : weightUnit === "lbs" ? weight / 2.20462 : weight,
+        bodyFatPercentage: fat,
+        rating,
+      });
       router.replace(`/workout/${workout.id}`);
     } catch (error) {
       Alert.alert("Could not save workout", error instanceof Error ? error.message : "Please try again.");
@@ -105,7 +129,7 @@ export default function NewWorkoutScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content} style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" style={styles.screen}>
       <Stack.Screen
         options={{
           headerBackTitle: translate(language, "workouts"),
@@ -130,6 +154,51 @@ export default function NewWorkoutScreen() {
         style={styles.input}
         value={date}
       />
+      <Text style={styles.label}>{translate(language, "duration")}</Text>
+      <TextInput
+        accessibilityLabel={translate(language, "duration")}
+        keyboardType="number-pad"
+        onChangeText={setDuration}
+        style={styles.input}
+        value={duration}
+      />
+      <Text style={styles.label}>
+        {translate(language, "currentWeight")} ({weightUnit}) · {translate(language, "optional")}
+      </Text>
+      <TextInput
+        accessibilityLabel={`${translate(language, "currentWeight")} (${weightUnit})`}
+        keyboardType="decimal-pad"
+        onChangeText={setBodyWeight}
+        placeholder="—"
+        placeholderTextColor="#778177"
+        style={styles.input}
+        value={bodyWeight}
+      />
+      <Text style={styles.label}>{translate(language, "bodyFat")} · {translate(language, "optional")}</Text>
+      <TextInput
+        accessibilityLabel={translate(language, "bodyFat")}
+        keyboardType="decimal-pad"
+        onChangeText={setBodyFat}
+        placeholder="—"
+        placeholderTextColor="#778177"
+        style={styles.input}
+        value={bodyFat}
+      />
+      <Text style={styles.label}>{translate(language, "rating")} · {translate(language, "optional")}</Text>
+      <View style={styles.ratingRow}>
+        {[1, 2, 3, 4, 5].map((value) => (
+          <Pressable
+            accessibilityLabel={language === "sk" ? `Hodnotenie ${value} z 5` : `Rating ${value} out of 5`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: rating === value }}
+            key={value}
+            onPress={() => setRating((current) => current === value ? 0 : value)}
+            style={styles.ratingButton}
+          >
+            <Text style={[styles.star, value <= rating && styles.starActive]}>★</Text>
+          </Pressable>
+        ))}
+      </View>
       <Text style={styles.sectionTitle}>{translate(language, "workoutType")}</Text>
       <Text style={styles.sectionHint}>
         {language === "sk"
@@ -235,6 +304,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   sectionTitle: { color: "#B7F34A", fontSize: 17, fontWeight: "800", marginTop: 28 },
+  ratingRow: { flexDirection: "row", gap: 4 },
+  ratingButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  star: { color: "#778177", fontSize: 32 },
+  starActive: { color: "#B7F34A" },
   sectionHint: { color: "#A0AAA0", fontSize: 14, lineHeight: 20, marginTop: 6 },
   categoryList: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   categoryButton: { borderColor: "#405043", borderRadius: 20, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 9 },
