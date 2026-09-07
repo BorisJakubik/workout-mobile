@@ -8,6 +8,8 @@ import type { Workout, WorkoutExercise } from "@/src/types";
 import { translate, translateExerciseName, translateWorkoutName } from "@/src/i18n";
 import { usePreferences } from "@/src/providers/preferences-provider";
 
+import { NotesInput } from "@/src/components/notes-input";
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 const templateExercises = (categoryId: string, catalog: CatalogExercise[], workouts: Workout[]): WorkoutExercise[] => {
@@ -38,6 +40,8 @@ export default function NewWorkoutScreen() {
   const [duration, setDuration] = useState("60");
   const [bodyWeight, setBodyWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
+  const [notes, setNotes] = useState("");
+  const [isDictating, setIsDictating] = useState(false);
   const [rating, setRating] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -89,7 +93,7 @@ export default function NewWorkoutScreen() {
   };
 
   const save = async () => {
-    if (isSaving) return;
+    if (isSaving || isDictating) return;
     if (!name.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       Alert.alert("Check workout details", "Enter a workout name and a date in YYYY-MM-DD format.");
       return;
@@ -119,6 +123,7 @@ export default function NewWorkoutScreen() {
         bodyWeight: weight === null ? null : weightUnit === "lbs" ? weight / 2.20462 : weight,
         bodyFatPercentage: fat,
         rating,
+        notes,
       });
       router.replace(`/workout/${workout.id}`);
     } catch (error) {
@@ -199,6 +204,7 @@ export default function NewWorkoutScreen() {
           </Pressable>
         ))}
       </View>
+      <NotesInput value={notes} onChange={setNotes} onActiveChange={setIsDictating} disabled={isSaving} />
       <Text style={styles.sectionTitle}>{translate(language, "workoutType")}</Text>
       <Text style={styles.sectionHint}>
         {language === "sk"
@@ -280,7 +286,7 @@ export default function NewWorkoutScreen() {
             </Pressable>
           ))
       )}
-      <Pressable disabled={isSaving} onPress={() => void save()} style={[styles.saveButton, isSaving && styles.disabled]}>
+      <Pressable disabled={isSaving || isDictating} onPress={() => void save()} style={[styles.saveButton, (isSaving || isDictating) && styles.disabled]}>
         {isSaving ? <ActivityIndicator color="#101510" /> : <Text style={styles.saveText}>{translate(language, "createWorkout")}</Text>}
       </Pressable>
     </ScrollView>
