@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AppState, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppState, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { requireOptionalNativeModule } from "expo";
 import { Ionicons } from "@expo/vector-icons";
 import { usePreferences } from "@/src/providers/preferences-provider";
 import { translate } from "@/src/i18n";
@@ -55,8 +56,13 @@ export function NotesInput({ value, onChange, onActiveChange, disabled }: Props)
       callbacks.current.onActiveChange(false);
     };
     try {
-      const { ExpoSpeechRecognitionModule: recognition } = await import("expo-speech-recognition");
+      // Importing the package on native throws during module evaluation when
+      // running in Expo Go or a build that predates this native dependency.
+      const recognition = Platform.OS === "web"
+        ? (await import("expo-speech-recognition")).ExpoSpeechRecognitionModule
+        : requireOptionalNativeModule<NonNullable<typeof moduleRef.current>>("ExpoSpeechRecognition");
       if (!mounted.current) return;
+      if (!recognition) throw new Error("unavailable");
       moduleRef.current = recognition;
       if (!recognition.isRecognitionAvailable()) throw new Error("unavailable");
       const permission = await recognition.requestPermissionsAsync();
